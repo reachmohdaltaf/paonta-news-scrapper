@@ -17,12 +17,14 @@
 <canvas id="imageCanvas" style="display: none;"></canvas>
 
 <script>
+const BASE_URL = 'https://paonta-news-scrapper.onrender.com'; // Your Render URL
+
 async function fetchNews() {
     const container = document.getElementById('news-container');
     container.innerHTML = 'Loading news...';
 
     try {
-        const res = await fetch('http://localhost:5000/scrape');
+        const res = await fetch(`${BASE_URL}/scrape`);
         const data = await res.json();
         container.innerHTML = '';
 
@@ -95,7 +97,7 @@ async function fetchNews() {
 // Generate post image function
 async function generatePostImage(headline) {
     try {
-        const response = await fetch('http://localhost:5000/generate-post', {
+        const response = await fetch(`${BASE_URL}/generate-post`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ headline })
@@ -125,7 +127,7 @@ async function generatePostImage(headline) {
 // Generate with AI function
 async function generateWithAI(headline) {
     try {
-        const response = await fetch('http://localhost:5000/generate-ai', {
+        const response = await fetch(`${BASE_URL}/generate-ai`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ headline })
