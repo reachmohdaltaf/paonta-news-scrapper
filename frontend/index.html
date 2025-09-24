@@ -8,9 +8,12 @@
 </head>
 <body>
 
-<h1>Latest Paonta Sahib News</h1>
+<!-- Reload button -->
 <button id="reload-btn">Reload News</button>
+
 <div id="news-container"></div>
+
+<!-- Hidden canvas for image generation -->
 <canvas id="imageCanvas" style="display: none;"></canvas>
 
 <script>
@@ -19,7 +22,7 @@ async function fetchNews() {
     container.innerHTML = 'Loading news...';
 
     try {
-        const res = await fetch('/scrape'); // Relative URL for production
+        const res = await fetch('http://localhost:5000/scrape');
         const data = await res.json();
         container.innerHTML = '';
 
@@ -47,23 +50,30 @@ async function fetchNews() {
             const content = document.createElement('p');
             content.textContent = item.content;
 
+            // Button container
             const buttonContainer = document.createElement('div');
             buttonContainer.className = 'button-container';
 
+            // Copy title button
             const copyBtn = document.createElement('button');
             copyBtn.textContent = 'Copy Title';
+            copyBtn.className = 'copy-btn';
             copyBtn.addEventListener('click', () => {
                 navigator.clipboard.writeText(item.headline);
                 copyBtn.textContent = 'Copied!';
                 setTimeout(() => copyBtn.textContent = 'Copy Title', 1500);
             });
 
+            // Make post button
             const makePostBtn = document.createElement('button');
             makePostBtn.textContent = 'Make Post';
+            makePostBtn.className = 'make-post-btn';
             makePostBtn.addEventListener('click', () => generatePostImage(item.headline));
 
+            // Generate with AI button
             const aiBtn = document.createElement('button');
             aiBtn.textContent = 'Generate with AI';
+            aiBtn.className = 'ai-btn';
             aiBtn.addEventListener('click', () => generateWithAI(item.headline));
 
             buttonContainer.appendChild(copyBtn);
@@ -78,13 +88,14 @@ async function fetchNews() {
         });
     } catch (err) {
         console.error('Failed to fetch news', err);
-        container.textContent = "Failed to load news.";
+        container.textContent = "Failed to load news. Check your server.";
     }
 }
 
+// Generate post image function
 async function generatePostImage(headline) {
     try {
-        const response = await fetch('/generate-post', {
+        const response = await fetch('http://localhost:5000/generate-post', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ headline })
@@ -94,6 +105,7 @@ async function generatePostImage(headline) {
             const blob = await response.blob();
             const url = URL.createObjectURL(blob);
 
+            // Create download link
             const a = document.createElement('a');
             a.href = url;
             a.download = `zafaroo-news-post-${Date.now()}.png`;
@@ -101,16 +113,19 @@ async function generatePostImage(headline) {
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
-        } else alert('Failed to generate post image');
+        } else {
+            alert('Failed to generate post image');
+        }
     } catch (error) {
         console.error('Error generating post:', error);
         alert('Error generating post image');
     }
 }
 
+// Generate with AI function
 async function generateWithAI(headline) {
     try {
-        const response = await fetch('/generate-ai', {
+        const response = await fetch('http://localhost:5000/generate-ai', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ headline })
@@ -119,7 +134,9 @@ async function generateWithAI(headline) {
         if (response.ok) {
             const result = await response.json();
             alert('AI Generated Content:\n' + result.content);
-        } else alert('Failed to generate content with AI');
+        } else {
+            alert('Failed to generate content with AI');
+        }
     } catch (error) {
         console.error('AI generation error:', error);
         alert('Error generating content with AI');
@@ -128,6 +145,8 @@ async function generateWithAI(headline) {
 
 // Fetch news on page load
 fetchNews();
+
+// Reload button click
 document.getElementById('reload-btn').addEventListener('click', fetchNews);
 </script>
 </body>

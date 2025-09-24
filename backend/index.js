@@ -4,36 +4,22 @@ const cors = require('cors');
 const sharp = require('sharp'); // npm install sharp
 const fetch = require('node-fetch'); // npm install node-fetch
 require('dotenv').config(); // npm install dotenv
-const path = require('path');
 
 const app = express();
+app.use(cors());
 app.use(express.json());
-
-// --- CORS for production (allow your Render URL) ---
-const corsOptions = {
-  origin: 'https://paonta-news-scrapper.onrender.com',
-  methods: ['GET', 'POST'],
-  allowedHeaders: ['Content-Type'],
-};
-app.use(cors(corsOptions));
-
-// --- Serve frontend (index.html + css) ---
-app.use(express.static(path.join(__dirname, 'frontend')));
-
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'frontend/index.html'));
-});
 
 const parser = new Parser();
 const DEFAULT_RSS = 'https://news.google.com/rss/search?q=Paonta+Sahib&hl=hi&gl=IN&ceid=IN:hi';
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY; // Put your Gemini API key in .env
 
-// --- Helper function to clean headlines ---
+// Function to clean headline by removing news source
 function cleanHeadline(headline) {
-  return headline.replace(/\s-\s[^-]*$/, '').trim();
+  const cleaned = headline.replace(/\s-\s[^-]*$/, '');
+  return cleaned.trim();
 }
 
-// --- Scrape News ---
+// Fetch news
 app.get('/scrape', async (req, res) => {
   try {
     const url = req.query.customUrl || DEFAULT_RSS;
@@ -56,7 +42,7 @@ app.get('/scrape', async (req, res) => {
   }
 });
 
-// --- Generate Post Image ---
+// Generate post image endpoint
 app.post('/generate-post', async (req, res) => {
   try {
     const { headline } = req.body;
@@ -95,7 +81,7 @@ app.post('/generate-post', async (req, res) => {
   }
 });
 
-// --- AI Content Generation ---
+// Generate AI description + hashtags with Gemini
 app.post('/generate-ai', async (req, res) => {
   try {
     const { headline } = req.body;
@@ -112,7 +98,7 @@ app.post('/generate-ai', async (req, res) => {
       method: 'POST',
       headers: {
         "Content-Type": "application/json",
-        "X-goog-api-key": GEMINI_API_KEY
+        "X-goog-api-key": "AIzaSyABbhtCpI3qj1m6jMvSAPtynWbuhxs4hFM"
       },
       body: JSON.stringify(payload)
     });
@@ -127,7 +113,7 @@ app.post('/generate-ai', async (req, res) => {
   }
 });
 
-// --- SVG Text Wrapping Helper ---
+// Helper to wrap SVG text
 function wrapText(text, x, y, fontSize, lineHeight, maxWidth) {
   const words = text.split(' ');
   const lines = [];
@@ -137,22 +123,14 @@ function wrapText(text, x, y, fontSize, lineHeight, maxWidth) {
     const testLine = [...currentLine, word].join(' ');
     const textWidth = testLine.length * (fontSize * 0.6);
     if (textWidth <= maxWidth && currentLine.length < 8) currentLine.push(word);
-    else {
-      if (currentLine.length > 0) {
-        lines.push(currentLine.join(' '));
-        currentLine = [word];
-      }
-    }
+    else { if (currentLine.length > 0) { lines.push(currentLine.join(' ')); currentLine = [word]; } }
   });
 
   if (currentLine.length > 0) lines.push(currentLine.join(' '));
   const totalHeight = lines.length * lineHeight;
   const startY = y - (totalHeight / 2) + (lineHeight / 2);
-  return lines.map((line, index) =>
-    `<text x="${x}" y="${startY + (index * lineHeight)}" class="title-text">${line}</text>`
-  ).join('\n  ');
+  return lines.map((line, index) => `<text x="${x}" y="${startY + (index * lineHeight)}" class="title-text">${line}</text>`).join('\n  ');
 }
 
-// --- Start server ---
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Paonta News Scraper running on port ${PORT}`));
