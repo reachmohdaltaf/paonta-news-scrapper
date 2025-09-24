@@ -3,29 +3,37 @@ const Parser = require('rss-parser');
 const cors = require('cors');
 const sharp = require('sharp'); // npm install sharp
 const fetch = require('node-fetch'); // npm install node-fetch
-require('dotenv').config();
+require('dotenv').config(); // npm install dotenv
 const path = require('path');
 
 const app = express();
-app.use(cors());
 app.use(express.json());
 
-// --- Serve frontend ---
-app.use(express.static(path.join(__dirname, '../frontend')));
+// --- CORS for production (allow your Render URL) ---
+const corsOptions = {
+  origin: 'https://paonta-news-scrapper.onrender.com',
+  methods: ['GET', 'POST'],
+  allowedHeaders: ['Content-Type'],
+};
+app.use(cors(corsOptions));
+
+// --- Serve frontend (index.html + css) ---
+app.use(express.static(path.join(__dirname, 'frontend')));
+
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, '../frontend/index.html'));
+  res.sendFile(path.join(__dirname, 'frontend/index.html'));
 });
 
 const parser = new Parser();
 const DEFAULT_RSS = 'https://news.google.com/rss/search?q=Paonta+Sahib&hl=hi&gl=IN&ceid=IN:hi';
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
-// --- Clean headline ---
+// --- Helper function to clean headlines ---
 function cleanHeadline(headline) {
   return headline.replace(/\s-\s[^-]*$/, '').trim();
 }
 
-// --- Fetch news ---
+// --- Scrape News ---
 app.get('/scrape', async (req, res) => {
   try {
     const url = req.query.customUrl || DEFAULT_RSS;
@@ -48,7 +56,7 @@ app.get('/scrape', async (req, res) => {
   }
 });
 
-// --- Generate post image ---
+// --- Generate Post Image ---
 app.post('/generate-post', async (req, res) => {
   try {
     const { headline } = req.body;
@@ -57,20 +65,13 @@ app.post('/generate-post', async (req, res) => {
     const cleanedHeadline = cleanHeadline(headline);
     const width = 1080, height = 1080;
 
-    // Base64 Roboto Regular (Google font) - small version
-    const robotoBase64 = 'AAEAAAASAQAABAAgR0RFRrRCsIIAA...'; // <<< Replace with full base64 font
-
     const svgPost = `
 <svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <style type="text/css">
-      @font-face {
-        font-family: 'Roboto';
-        src: url(data:font/woff2;charset=utf-8;base64,${robotoBase64}) format('woff2');
-      }
-      .title-text { font-family: 'Roboto', sans-serif; font-size: 48px; font-weight: bold; fill: white; text-anchor: middle; dominant-baseline: middle; }
-      .brand-text { font-family: 'Roboto', sans-serif; font-size: 36px; font-weight: bold; fill: #FFDE59; text-anchor: start; dominant-baseline: middle; }
-      .date-text { font-family: 'Roboto', sans-serif; font-size: 24px; fill: #cccccc; text-anchor: end; dominant-baseline: middle; }
+    <style>
+      .title-text { font-family: 'Arial', sans-serif; font-size: 48px; font-weight: bold; fill: white; text-anchor: middle; dominant-baseline: middle; }
+      .brand-text { font-family: 'Arial', sans-serif; font-size: 36px; font-weight: bold; fill: #FFDE59; text-anchor: start; dominant-baseline: middle; }
+      .date-text { font-family: 'Arial', sans-serif; font-size: 24px; fill: #cccccc; text-anchor: end; dominant-baseline: middle; }
     </style>
   </defs>
   <rect width="100%" height="100%" fill="#22201F"/>
@@ -94,7 +95,7 @@ app.post('/generate-post', async (req, res) => {
   }
 });
 
-// --- Generate AI description + hashtags ---
+// --- AI Content Generation ---
 app.post('/generate-ai', async (req, res) => {
   try {
     const { headline } = req.body;
@@ -126,7 +127,7 @@ app.post('/generate-ai', async (req, res) => {
   }
 });
 
-// --- Wrap text helper ---
+// --- SVG Text Wrapping Helper ---
 function wrapText(text, x, y, fontSize, lineHeight, maxWidth) {
   const words = text.split(' ');
   const lines = [];
@@ -147,11 +148,11 @@ function wrapText(text, x, y, fontSize, lineHeight, maxWidth) {
   if (currentLine.length > 0) lines.push(currentLine.join(' '));
   const totalHeight = lines.length * lineHeight;
   const startY = y - (totalHeight / 2) + (lineHeight / 2);
-
   return lines.map((line, index) =>
     `<text x="${x}" y="${startY + (index * lineHeight)}" class="title-text">${line}</text>`
   ).join('\n  ');
 }
 
+// --- Start server ---
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Paonta News Scraper running on port ${PORT}`));
