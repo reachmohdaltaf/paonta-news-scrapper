@@ -1,9 +1,9 @@
 const express = require('express');
 const Parser = require('rss-parser');
 const cors = require('cors');
-const sharp = require('sharp'); // npm install sharp
-const fetch = require('node-fetch'); // npm install node-fetch
-require('dotenv').config(); // npm install dotenv
+const sharp = require('sharp'); 
+const fetch = require('node-fetch');
+require('dotenv').config();
 const path = require('path');
 
 const app = express();
@@ -19,15 +19,15 @@ app.get('/', (req, res) => {
 
 const parser = new Parser();
 const DEFAULT_RSS = 'https://news.google.com/rss/search?q=Paonta+Sahib&hl=hi&gl=IN&ceid=IN:hi';
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY; // Put your Gemini API key in .env
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
-// Function to clean headline by removing news source
+// --- Helper: Clean headline ---
 function cleanHeadline(headline) {
   const cleaned = headline.replace(/\s-\s[^-]*$/, '');
   return cleaned.trim();
 }
 
-// Fetch news
+// --- Fetch news ---
 app.get('/scrape', async (req, res) => {
   try {
     const url = req.query.customUrl || DEFAULT_RSS;
@@ -50,7 +50,7 @@ app.get('/scrape', async (req, res) => {
   }
 });
 
-// Generate post image endpoint
+// --- Generate post image ---
 app.post('/generate-post', async (req, res) => {
   try {
     const { headline } = req.body;
@@ -59,13 +59,15 @@ app.post('/generate-post', async (req, res) => {
     const cleanedHeadline = cleanHeadline(headline);
     const width = 1080, height = 1080;
 
+    // SVG with Google Fonts embed (Noto Sans)
     const svgPost = `
 <svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <style>
-      .title-text { font-family: 'Arial', sans-serif; font-size: 48px; font-weight: bold; fill: white; text-anchor: middle; dominant-baseline: middle; }
-      .brand-text { font-family: 'Arial', sans-serif; font-size: 36px; font-weight: bold; fill: #FFDE59; text-anchor: start; dominant-baseline: middle; }
-      .date-text { font-family: 'Arial', sans-serif; font-size: 24px; fill: #cccccc; text-anchor: end; dominant-baseline: middle; }
+      @import url('https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;700&display=swap');
+      .title-text { font-family: 'Noto Sans', sans-serif; font-size: 48px; font-weight: bold; fill: white; text-anchor: middle; dominant-baseline: middle; }
+      .brand-text { font-family: 'Noto Sans', sans-serif; font-size: 36px; font-weight: bold; fill: #FFDE59; text-anchor: start; dominant-baseline: middle; }
+      .date-text { font-family: 'Noto Sans', sans-serif; font-size: 24px; fill: #cccccc; text-anchor: end; dominant-baseline: middle; }
     </style>
   </defs>
   <rect width="100%" height="100%" fill="#22201F"/>
@@ -89,7 +91,7 @@ app.post('/generate-post', async (req, res) => {
   }
 });
 
-// Generate AI description + hashtags with Gemini
+// --- Generate AI description ---
 app.post('/generate-ai', async (req, res) => {
   try {
     const { headline } = req.body;
@@ -106,7 +108,7 @@ app.post('/generate-ai', async (req, res) => {
       method: 'POST',
       headers: {
         "Content-Type": "application/json",
-        "X-goog-api-key": GEMINI_API_KEY   // 👈 hardcoded key hata ke .env use karo
+        "X-goog-api-key": GEMINI_API_KEY
       },
       body: JSON.stringify(payload)
     });
@@ -121,7 +123,7 @@ app.post('/generate-ai', async (req, res) => {
   }
 });
 
-// Helper to wrap SVG text
+// --- Helper: wrap text in SVG ---
 function wrapText(text, x, y, fontSize, lineHeight, maxWidth) {
   const words = text.split(' ');
   const lines = [];
@@ -147,5 +149,6 @@ function wrapText(text, x, y, fontSize, lineHeight, maxWidth) {
   ).join('\n  ');
 }
 
+// --- Start server ---
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Paonta News Scraper running on port ${PORT}`));
