@@ -1,8 +1,8 @@
 const express = require('express');
 const Parser = require('rss-parser');
 const cors = require('cors');
-const sharp = require('sharp'); 
-const fetch = require('node-fetch');
+const sharp = require('sharp'); // npm install sharp
+const fetch = require('node-fetch'); // npm install node-fetch
 require('dotenv').config();
 const path = require('path');
 
@@ -10,9 +10,8 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// --- Serve frontend (index.html + css) ---
+// --- Serve frontend ---
 app.use(express.static(path.join(__dirname, '../frontend')));
-
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, '../frontend/index.html'));
 });
@@ -21,10 +20,9 @@ const parser = new Parser();
 const DEFAULT_RSS = 'https://news.google.com/rss/search?q=Paonta+Sahib&hl=hi&gl=IN&ceid=IN:hi';
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
-// --- Helper: Clean headline ---
+// --- Clean headline ---
 function cleanHeadline(headline) {
-  const cleaned = headline.replace(/\s-\s[^-]*$/, '');
-  return cleaned.trim();
+  return headline.replace(/\s-\s[^-]*$/, '').trim();
 }
 
 // --- Fetch news ---
@@ -59,15 +57,20 @@ app.post('/generate-post', async (req, res) => {
     const cleanedHeadline = cleanHeadline(headline);
     const width = 1080, height = 1080;
 
-    // SVG with Google Fonts embed (Noto Sans)
+    // Base64 Roboto Regular (Google font) - small version
+    const robotoBase64 = 'AAEAAAASAQAABAAgR0RFRrRCsIIAA...'; // <<< Replace with full base64 font
+
     const svgPost = `
 <svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <style>
-      @import url('https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;700&display=swap');
-      .title-text { font-family: 'Noto Sans', sans-serif; font-size: 48px; font-weight: bold; fill: white; text-anchor: middle; dominant-baseline: middle; }
-      .brand-text { font-family: 'Noto Sans', sans-serif; font-size: 36px; font-weight: bold; fill: #FFDE59; text-anchor: start; dominant-baseline: middle; }
-      .date-text { font-family: 'Noto Sans', sans-serif; font-size: 24px; fill: #cccccc; text-anchor: end; dominant-baseline: middle; }
+    <style type="text/css">
+      @font-face {
+        font-family: 'Roboto';
+        src: url(data:font/woff2;charset=utf-8;base64,${robotoBase64}) format('woff2');
+      }
+      .title-text { font-family: 'Roboto', sans-serif; font-size: 48px; font-weight: bold; fill: white; text-anchor: middle; dominant-baseline: middle; }
+      .brand-text { font-family: 'Roboto', sans-serif; font-size: 36px; font-weight: bold; fill: #FFDE59; text-anchor: start; dominant-baseline: middle; }
+      .date-text { font-family: 'Roboto', sans-serif; font-size: 24px; fill: #cccccc; text-anchor: end; dominant-baseline: middle; }
     </style>
   </defs>
   <rect width="100%" height="100%" fill="#22201F"/>
@@ -91,7 +94,7 @@ app.post('/generate-post', async (req, res) => {
   }
 });
 
-// --- Generate AI description ---
+// --- Generate AI description + hashtags ---
 app.post('/generate-ai', async (req, res) => {
   try {
     const { headline } = req.body;
@@ -123,7 +126,7 @@ app.post('/generate-ai', async (req, res) => {
   }
 });
 
-// --- Helper: wrap text in SVG ---
+// --- Wrap text helper ---
 function wrapText(text, x, y, fontSize, lineHeight, maxWidth) {
   const words = text.split(' ');
   const lines = [];
@@ -144,11 +147,11 @@ function wrapText(text, x, y, fontSize, lineHeight, maxWidth) {
   if (currentLine.length > 0) lines.push(currentLine.join(' '));
   const totalHeight = lines.length * lineHeight;
   const startY = y - (totalHeight / 2) + (lineHeight / 2);
+
   return lines.map((line, index) =>
     `<text x="${x}" y="${startY + (index * lineHeight)}" class="title-text">${line}</text>`
   ).join('\n  ');
 }
 
-// --- Start server ---
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Paonta News Scraper running on port ${PORT}`));

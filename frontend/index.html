@@ -1,145 +1,153 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Paonta News Scraper</title>
-  <link rel="stylesheet" href="index.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Paonta News Scraper</title>
+<link rel="stylesheet" href="index.css">
 </head>
 <body>
 
-  <button id="reload-btn">Reload News</button>
-  <div id="news-container"></div>
-  <canvas id="imageCanvas" style="display: none;"></canvas>
+<!-- Reload button -->
+<button id="reload-btn">Reload News</button>
 
-  <script>
-  // 🔑 API base URL (local vs production handle karega)
-  const API_BASE = window.location.hostname === "localhost"
-    ? "http://localhost:5000"
-    : "https://paonta-news-scrapper.onrender.com";
+<div id="news-container"></div>
 
-  // ---------------- Fetch News ----------------
-  async function fetchNews() {
-      const container = document.getElementById('news-container');
-      container.innerHTML = 'Loading news...';
+<!-- Hidden canvas for image generation -->
+<canvas id="imageCanvas" style="display: none;"></canvas>
 
-      try {
-          const res = await fetch(`${API_BASE}/scrape`);
-          const data = await res.json();
-          container.innerHTML = '';
+<script>
+async function fetchNews() {
+    const container = document.getElementById('news-container');
+    container.innerHTML = 'Loading news...';
 
-          if (!data.news || data.news.length === 0) {
-              container.textContent = "No news found for today.";
-              return;
-          }
+    try {
+        const res = await fetch('http://localhost:5000/scrape');
+        const data = await res.json();
+        container.innerHTML = '';
 
-          data.news.forEach(item => {
-              const div = document.createElement('div');
-              div.className = 'news-item';
+        if (!data.news || data.news.length === 0) {
+            container.textContent = "No news found for today.";
+            return;
+        }
 
-              const a = document.createElement('a');
-              a.href = item.url;
-              a.target = '_blank';
-              a.textContent = item.headline;
+        data.news.forEach(item => {
+            const div = document.createElement('div');
+            div.className = 'news-item';
 
-              const date = document.createElement('div');
-              date.className = 'date';
-              date.textContent = new Date(item.date).toLocaleString('hi-IN', {
-                  day: 'numeric', month: 'long', year: 'numeric',
-                  hour: '2-digit', minute: '2-digit'
-              });
+            const a = document.createElement('a');
+            a.href = item.url;
+            a.target = '_blank';
+            a.textContent = item.headline;
 
-              const content = document.createElement('p');
-              content.textContent = item.content;
+            const date = document.createElement('div');
+            date.className = 'date';
+            date.textContent = new Date(item.date).toLocaleString('hi-IN', {
+                day: 'numeric', month: 'long', year: 'numeric',
+                hour: '2-digit', minute: '2-digit'
+            });
 
-              const buttonContainer = document.createElement('div');
-              buttonContainer.className = 'button-container';
+            const content = document.createElement('p');
+            content.textContent = item.content;
 
-              const copyBtn = document.createElement('button');
-              copyBtn.textContent = 'Copy Title';
-              copyBtn.addEventListener('click', () => {
-                  navigator.clipboard.writeText(item.headline);
-                  copyBtn.textContent = 'Copied!';
-                  setTimeout(() => copyBtn.textContent = 'Copy Title', 1500);
-              });
+            // Button container
+            const buttonContainer = document.createElement('div');
+            buttonContainer.className = 'button-container';
 
-              const makePostBtn = document.createElement('button');
-              makePostBtn.textContent = 'Make Post';
-              makePostBtn.addEventListener('click', () => generatePostImage(item.headline));
+            // Copy title button
+            const copyBtn = document.createElement('button');
+            copyBtn.textContent = 'Copy Title';
+            copyBtn.className = 'copy-btn';
+            copyBtn.addEventListener('click', () => {
+                navigator.clipboard.writeText(item.headline);
+                copyBtn.textContent = 'Copied!';
+                setTimeout(() => copyBtn.textContent = 'Copy Title', 1500);
+            });
 
-              const aiBtn = document.createElement('button');
-              aiBtn.textContent = 'Generate with AI';
-              aiBtn.addEventListener('click', () => generateWithAI(item.headline));
+            // Make post button
+            const makePostBtn = document.createElement('button');
+            makePostBtn.textContent = 'Make Post';
+            makePostBtn.className = 'make-post-btn';
+            makePostBtn.addEventListener('click', () => generatePostImage(item.headline));
 
-              buttonContainer.appendChild(copyBtn);
-              buttonContainer.appendChild(makePostBtn);
-              buttonContainer.appendChild(aiBtn);
+            // Generate with AI button
+            const aiBtn = document.createElement('button');
+            aiBtn.textContent = 'Generate with AI';
+            aiBtn.className = 'ai-btn';
+            aiBtn.addEventListener('click', () => generateWithAI(item.headline));
 
-              div.appendChild(a);
-              div.appendChild(date);
-              div.appendChild(content);
-              div.appendChild(buttonContainer);
-              container.appendChild(div);
-          });
+            buttonContainer.appendChild(copyBtn);
+            buttonContainer.appendChild(makePostBtn);
+            buttonContainer.appendChild(aiBtn);
 
-      } catch (err) {
-          console.error(err);
-          container.textContent = "Failed to load news.";
-      }
-  }
+            div.appendChild(a);
+            div.appendChild(date);
+            div.appendChild(content);
+            div.appendChild(buttonContainer);
+            container.appendChild(div);
+        });
+    } catch (err) {
+        console.error('Failed to fetch news', err);
+        container.textContent = "Failed to load news. Check your server.";
+    }
+}
 
-  // ---------------- Generate Post Image ----------------
-  async function generatePostImage(headline) {
-      try {
-          const response = await fetch(`${API_BASE}/generate-post`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ headline })
-          });
+// Generate post image function
+async function generatePostImage(headline) {
+    try {
+        const response = await fetch('http://localhost:5000/generate-post', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ headline })
+        });
 
-          if (response.ok) {
-              const blob = await response.blob();
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement('a');
-              a.href = url;
-              a.download = `zafaroo-news-post-${Date.now()}.png`;
-              document.body.appendChild(a);
-              a.click();
-              document.body.removeChild(a);
-              URL.revokeObjectURL(url);
-          } else {
-              alert('Failed to generate post image');
-          }
-      } catch (error) {
-          console.error(error);
-          alert('Error generating post image');
-      }
-  }
+        if (response.ok) {
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
 
-  // ---------------- Generate with AI ----------------
-  async function generateWithAI(headline) {
-      try {
-          const response = await fetch(`${API_BASE}/generate-ai`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ headline })
-          });
+            // Create download link
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `zafaroo-news-post-${Date.now()}.png`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        } else {
+            alert('Failed to generate post image');
+        }
+    } catch (error) {
+        console.error('Error generating post:', error);
+        alert('Error generating post image');
+    }
+}
 
-          if (response.ok) {
-              const result = await response.json();
-              alert('AI Generated Content:\n\n' + result.content);
-          } else {
-              alert('Failed to generate AI content');
-          }
-      } catch (error) {
-          console.error(error);
-          alert('Error generating AI content');
-      }
-  }
+// Generate with AI function
+async function generateWithAI(headline) {
+    try {
+        const response = await fetch('http://localhost:5000/generate-ai', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ headline })
+        });
 
-  // Initial fetch + reload button
-  fetchNews();
-  document.getElementById('reload-btn').addEventListener('click', fetchNews);
-  </script>
+        if (response.ok) {
+            const result = await response.json();
+            alert('AI Generated Content:\n' + result.content);
+        } else {
+            alert('Failed to generate content with AI');
+        }
+    } catch (error) {
+        console.error('AI generation error:', error);
+        alert('Error generating content with AI');
+    }
+}
+
+// Fetch news on page load
+fetchNews();
+
+// Reload button click
+document.getElementById('reload-btn').addEventListener('click', fetchNews);
+</script>
 </body>
 </html>
