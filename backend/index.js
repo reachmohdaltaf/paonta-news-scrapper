@@ -4,10 +4,18 @@ const cors = require('cors');
 const sharp = require('sharp'); // npm install sharp
 const fetch = require('node-fetch'); // npm install node-fetch
 require('dotenv').config(); // npm install dotenv
+const path = require('path');
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+// --- Serve frontend (index.html + css) ---
+app.use(express.static(path.join(__dirname, '../frontend')));
+
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, '../frontend/index.html'));
+});
 
 const parser = new Parser();
 const DEFAULT_RSS = 'https://news.google.com/rss/search?q=Paonta+Sahib&hl=hi&gl=IN&ceid=IN:hi';
@@ -98,7 +106,7 @@ app.post('/generate-ai', async (req, res) => {
       method: 'POST',
       headers: {
         "Content-Type": "application/json",
-        "X-goog-api-key": "AIzaSyABbhtCpI3qj1m6jMvSAPtynWbuhxs4hFM"
+        "X-goog-api-key": GEMINI_API_KEY   // 👈 hardcoded key hata ke .env use karo
       },
       body: JSON.stringify(payload)
     });
@@ -123,13 +131,20 @@ function wrapText(text, x, y, fontSize, lineHeight, maxWidth) {
     const testLine = [...currentLine, word].join(' ');
     const textWidth = testLine.length * (fontSize * 0.6);
     if (textWidth <= maxWidth && currentLine.length < 8) currentLine.push(word);
-    else { if (currentLine.length > 0) { lines.push(currentLine.join(' ')); currentLine = [word]; } }
+    else {
+      if (currentLine.length > 0) {
+        lines.push(currentLine.join(' '));
+        currentLine = [word];
+      }
+    }
   });
 
   if (currentLine.length > 0) lines.push(currentLine.join(' '));
   const totalHeight = lines.length * lineHeight;
   const startY = y - (totalHeight / 2) + (lineHeight / 2);
-  return lines.map((line, index) => `<text x="${x}" y="${startY + (index * lineHeight)}" class="title-text">${line}</text>`).join('\n  ');
+  return lines.map((line, index) =>
+    `<text x="${x}" y="${startY + (index * lineHeight)}" class="title-text">${line}</text>`
+  ).join('\n  ');
 }
 
 const PORT = process.env.PORT || 5000;
